@@ -1,0 +1,90 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+
+def usage
+  print(<<-"EOB")
+sshenc will make encrypted file by using ssh public key.
+
+  Usage:
+    Encrypt:
+      $ sshenc file id_rsa.pub
+    Decrypt:
+      $ sshenc [-k privatekey] file.sshenc.tar
+
+      By default, privatekey is using ~/.ssh/id_rsa
+        $ sshenc hoge.txt.sshenc.tar
+      If you want to change the privatekey, please use the option.
+        $ sshenc -k path/to/id_rsa hoge.txt.sshenc.tar
+
+  EOB
+  exit
+end
+
+opt = OptionParser.new
+pkey = ""
+opt.on('-k VAL') {|v| pkey = v}
+opt.on('-h', '--help') { usage }
+opt.parse!(ARGV)
+
+if pkey == ""
+  PRIVATE_KEY = "~/.ssh/id_rsa"
+else
+  PRIVATE_KEY = pkey
+end
+
+FILE = ARGV[0]
+KEY = ARGV[1]
+
+usage if FILE.nil?
+
+case FILE
+when /\.sshenc\.tar$/
+
+  begin
+  
+    TMP_DIR = FILE.chomp(".tar")
+    INFILE = TMP_DIR + "/" + TMP_DIR
+    OUTFILE = TMP_DIR.chomp(".sshenc")
+    AES_KEY = TMP_DIR + "/" + OUTFILE + ".key"
+
+    system("tar xf " + FILE)
+    system("openssl rsautl -decrypt -in " + AES_KEY + ".sshenc -out " + AES_KEY + " -inkey " + PRIVATE_KEY)
+    system("openssl aes-256-cbc -d -in " + INFILE + " -out " + OUTFILE + " -pass file:" + AES_KEY)
+    system("rm -rf " + TMP_DIR)
+
+    puts "Decrypted!"
+
+  rescue => ex
+    puts "Error."
+    puts ex.message
+  end
+
+else
+
+  begin
+
+    TMP_DIR = FILE + ".sshenc"
+    Dir.mkdir(TMP_DIR)
+
+    PUBLIC_KEY = TMP_DIR + "/pub.keys"
+    AES_KEY = TMP_DIR + "/" + FILE + ".key"
+    OUTFILE = TMP_DIR + "/" + FILE + ".sshenc"
+
+    system("ssh-keygen -f " + KEY + " -e -m PKCS8 > " + PUBLIC_KEY + ".pem")
+    system("cat /dev/urandom | LANG=C tr -dc '[:graph:]' | head -c 117 > " + AES_KEY)
+    system("openssl aes-256-cbc -e -in " + FILE + " -out " + OUTFILE + " -pass file:" + AES_KEY)
+    system("openssl rsautl -encrypt -in " + AES_KEY + " -out " + AES_KEY + ".sshenc -inkey " + PUBLIC_KEY + ".pem -pubin")
+    system("rm " + AES_KEY)
+    system("rm " + PUBLIC_KEY + ".pem")
+    system("tar cf " + FILE + ".sshenc.tar " + TMP_DIR)
+    system("rm -rf " + TMP_DIR)
+
+    puts "Encrypted!"
+
+  rescue => ex
+    puts "Error."
+    puts ex.message
+  end
+
+end
