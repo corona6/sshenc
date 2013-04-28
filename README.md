@@ -1,24 +1,28 @@
-# Sshenc
+# sshenc
 
-TODO: Write a gem description
+sshenc will make encrypted file by using ssh public key.
 
 ## Installation
-
-Add this line to your application's Gemfile:
-
-    gem 'sshenc'
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
 
     $ gem install sshenc
 
 ## Usage
 
-TODO: Write usage instructions here
+**Encrypt:**
+
+    $ sshenc file id_rsa.pub
+
+**Decrypt:**
+
+    $ sshenc [-k privatekey] file.sshenc.tar
+
+By default, privatekey is using `~/.ssh/id_rsa`
+
+    $ sshenc hoge.txt.sshenc.tar
+
+If you want to change the privatekey, please use the option.
+
+    $ sshenc -k path/to/id_rsa hoge.txt.sshenc.tar
 
 ## Contributing
 
